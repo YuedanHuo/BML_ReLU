@@ -1,0 +1,72 @@
+\documentclass{article} % or another standard class if recommended
+\usepackage[final]{neurips_2024} % load your style file; use appropriate options
+ 
+\usepackage[utf8]{inputenc}   
+\usepackage[T1]{fontenc}      
+\usepackage{amsmath, amssymb} 
+\usepackage{graphicx}         
+\usepackage{booktabs}         
+
+
+\title{Title of Your Paper}
+\author{%
+  First Author \\
+  Institution \\
+  \texttt{first.author@example.com}
+  \and
+  Second Author \\
+  Institution \\
+  \texttt{second.author@example.com}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Your abstract text goes here. 
+\end{abstract}
+
+
+\section{Introduction and Overview}
+
+ReLU-based classification networks are widely used in modern deep learning applications. However, it has been shown that for out-of-distribution (OOD) samples the predictive probability for a given class can be arbitrarily close to 1, leading to overconfident predictions. Such overconfidence is particularly problematic in safety-critical applications where reliable uncertainty estimation is essential.
+
+The paper \emph{``Being Bayesian, Even Just a Bit, Fixes Overconfidence in ReLU Networks''} addresses this issue by incorporating Bayesian statistics into ReLU networks. In particular, the authors focus on the binary classification setting using logistic regression. By approximating the posterior distribution over the network weights with a Gaussian,
+\[
+p(w \mid \mathcal{D}) \approx \mathcal{N}(w \mid \mu, \Sigma),
+\]
+they show that the asymptotic OOD predictive confidence is upper bounded by a function that depends solely on the mean vector \(\mu\) and covariance matrix \(\Sigma\). In effect, by controlling the parameters of the Gaussian approximation, one can shift this upper bound toward a value near \(1/2\), thereby mitigating overconfidence.
+
+To achieve this theoretical result, the authors employ two key techniques:
+
+\begin{enumerate}
+    \item \textbf{Probit Approximation:}  
+    The logistic function is approximated by the probit function according to
+    \[
+    \sigma(x) = \frac{1}{1 + e^{-x}} \approx \Phi\!\Bigl(\sqrt{\frac{\pi}{8}}\, x\Bigr),
+    \]
+    where \(\Phi(\cdot)\) denotes the cumulative distribution function of the standard normal distribution. The authors demonstrate (in Proposition 2.2) that this approximation preserves the prediction boundary, which is crucial for maintaining the qualitative behavior of the classifier.
+    
+    \item \textbf{Piece-wise Affine Structure of ReLU Networks:}  
+    The authors also exploit the fact that networks constructed solely from ReLU (or its linear variants) are piece-wise affine. This property holds for fully connected networks as well as for architectures that include convolutional layers or residual connections. The piece-wise affine structure simplifies the analysis and is instrumental in extending the results from logistic regression to more general ReLU networks.
+\end{enumerate}
+
+For practical implementation, the paper proposes a straightforward recipe: applying a flat Gaussian prior on the weights and then performing a Laplace approximation to obtain the Gaussian posterior. The experimental section validates this method on benchmark datasets such as MNIST (using LeNet) and CIFAR-10 (using ResNet-18), demonstrating that the Bayesian approach effectively curbs overconfidence in OOD scenarios.
+
+\subsection*{Theoretical Limitations}
+
+Despite its strengths, the theoretical contribution of the paper is subject to two notable limitations:
+
+\begin{itemize}
+    \item \textbf{Reliance on the Probit Approximation:}  
+    The analysis is confined to the binary classification setting with logistic regression, primarily due to the reliance on the probit approximation. It remains an open question whether similar theoretical guarantees can be extended to multi-class settings or to networks employing other activation functions.
+    
+    \item \textbf{Assumption of Piece-wise Affinity:}  
+    The analysis assumes that the ReLU network is piece-wise affine. While this is valid for networks that exclusively use ReLU or its linear variants, many modern architectures incorporate additional non-linearities (e.g., normalization layers, attention mechanisms) that may violate this assumption. As a result, the theoretical findings might not fully capture the behavior of more complex networks used in practical applications.
+\end{itemize}
+
+In summary, while the paper provides both theoretical and empirical support for the Bayesian approach to reducing overconfidence in ReLU networks, its theoretical scope is limited. Future work may consider extending these results to more general settings and network architectures.
+
+
+\end{document}

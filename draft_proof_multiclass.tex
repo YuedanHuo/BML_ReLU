@@ -1,0 +1,206 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+
+\newtheorem{prop}{Proposition}
+\newtheorem*{remark}{Remark}
+
+\begin{document}
+
+\section*{Idea of extension of multiclass}
+
+\textbf{Proposition.} Let $f_\theta: \mathbb{R}^n \to \mathbb{R}$ be a binary classifier with predictive probability
+\[
+\sigma(f_\theta(x)) = \frac{1}{1+e^{-f_\theta(x)}},
+\]
+and assume that the weight posterior is approximated by a Gaussian
+\[
+\theta \sim \mathcal{N}(\mu,\Sigma).
+\]
+Let us define the function
+\[
+g(\theta) = \tilde{f}_\theta(x) = f_\theta(x) - \log\Bigl(\sum_{j\neq k}\exp(f_{\theta,j}(x))\Bigr),
+\]
+so that, for a one-vs.-all construction for class $k$, the predictive probability is
+\[
+p(y=k \mid x,\mathcal{D}) = \sigma\Bigl(\tilde{f}_\theta(x)\Bigr).
+\]
+We wish to show that integrating over the uncertainty in $\theta$ yields a probability of $0.5$ at the decision boundary (i.e., when $\tilde{f}_\mu(x)=0$).
+
+\vspace{1ex}
+\textbf{Step 1. Taylor Expansion (Delta Method):}
+
+Perform a first-order Taylor expansion of $g(\theta)$ about $\theta = \mu$:
+\[
+g(\theta) \approx g(\mu) + \nabla g(\mu)^T (\theta-\mu).
+\]
+Thus, if the weight posterior is
+\[
+\theta \sim \mathcal{N}(\mu,\Sigma),
+\]
+then the induced distribution on $g(\theta)$ is approximately
+\[
+g(\theta) \sim \mathcal{N}\Bigl(g(\mu),\, \nabla g(\mu)^T \Sigma \, \nabla g(\mu)\Bigr).
+\]
+Define
+\[
+\tilde{f}_{\mu,k}(x) := g(\mu)
+\]
+and
+\[
+\Sigma_k := \nabla g(\mu)^T \Sigma \, \nabla g(\mu).
+\]
+
+\vspace{1ex}
+\textbf{Step 2. Probit Approximation and Expectation:}
+
+We approximate the sigmoid by the Gaussian CDF (probit function):
+\[
+\sigma(z) \approx \Phi\!\Bigl(\sqrt{\frac{\pi}{8}}\,z\Bigr).
+\]
+Thus, the predictive probability becomes
+\[
+p(y=k \mid x,\mathcal{D}) \approx \int \Phi\!\Bigl(\sqrt{\frac{\pi}{8}}\, \tilde{f}_{\theta,k}(x)\Bigr)\, \mathcal{N}\Bigl(\tilde{f}_{\theta,k}(x) \mid \tilde{f}_{\mu,k}(x),\, \Sigma_k\Bigr)\, d\tilde{f}_{\theta,k}(x).
+\]
+A standard result tells us that if
+\[
+z \sim \mathcal{N}(\mu, \sigma^2),
+\]
+then
+\[
+\mathbb{E}\left[\Phi\!\Bigl(a z\Bigr)\right] = \Phi\!\left(\frac{a\mu}{\sqrt{1+a^2\sigma^2}}\right).
+\]
+Taking $a=\sqrt{\pi/8}$, $\mu=\tilde{f}_{\mu,k}(x)$, and $\sigma^2=\Sigma_k$, we obtain
+\[
+p(y=k \mid x,\mathcal{D}) \approx \Phi\!\left(\frac{\sqrt{\frac{\pi}{8}}\,\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8}\Sigma_k}}\right).
+\]
+Returning to the sigmoid via the probit approximation (since $\Phi(\sqrt{\pi/8}\,z) \approx \sigma(z)$), we have
+\[
+p(y=k \mid x,\mathcal{D}) \approx \sigma\!\left(\frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8}\Sigma_k}}\right).
+\]
+
+\vspace{1ex}
+\textbf{Preservation of the Decision Boundary:}
+
+The binary decision boundary is defined by the condition
+\[
+\sigma(z)=0.5 \quad \Longleftrightarrow \quad z=0.
+\]
+Thus, if $\tilde{f}_{\mu,k}(x)=0$, then
+\[
+\frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8}\Sigma_k}} = 0,
+\]
+and hence
+\[
+\sigma\!\left(0\right)=0.5.
+\]
+Therefore, the decision boundary is preserved.
+
+\vspace{1ex}
+\begin{remark}
+While the above derivation shows that the threshold (i.e., $z=0$) is preserved in a binary classification or one-vs.-all setting, note that the full multiclass softmax function is a coupled function of all logits. In the multiclass case, if we apply this approximation to each class independently, the invariance of the individual logits’ zero crossings does \emph{not} guarantee that the relative ordering of the logits remains exactly the same, unless the scaling factors $\sqrt{1+\frac{\pi}{8}\Sigma_k}$ are identical (or nearly identical) for all classes. In practice, if these factors differ significantly, the decision boundary of the full softmax may shift. However, if the factors are approximately equal across classes, then the overall argmax (and hence the prediction) will be preserved. This highlights a limitation when extending the binary invariance result to the full multiclass setting.
+\end{remark}
+
+\section*{Proposition: Effect of Prior Variance Scale in the Multiclass Setting}
+
+\begin{prop}
+Let $f_\theta: \mathbb{R}^n \to \mathbb{R}^K$ be a multiclass classification network with logits 
+\[
+f_{\theta,k}(x) \quad \text{for } k=1,\dots,K,
+\]
+such that the predictive probability for class $k$ is given by the softmax:
+\[
+p(y=k \mid x,\theta) = \frac{\exp(f_{\theta,k}(x))}{\sum_{j=1}^K \exp(f_{\theta,j}(x))}.
+\]
+Define the transformed logit for class $k$:
+\[
+\tilde{f}_{\theta,k}(x) := f_{\theta,k}(x) - \log\Biggl(\sum_{j\neq k} \exp\bigl(f_{\theta,j}(x)\bigr)\Biggr).
+\]
+Assume that a Laplace approximation is used with a Gaussian weight posterior:
+\[
+\theta \sim \mathcal{N}(\mu,\Sigma),
+\]
+where the covariance is given by
+\[
+\Sigma = \left(\frac{1}{\sigma_0^2}I + H \right)^{-1},
+\]
+where $H$ is the Hessian of the negative log-likelihood at $\mu$. Define the Jacobian of the transformed logit as
+\[
+d_k(x) := \nabla_\theta \tilde{f}_{\theta,k}(x) \Big|_{\theta=\mu}.
+\]
+Then, for any input $x \in \mathbb{R}^n$, the approximate predictive probability is given by:
+\[
+p(y=k \mid x,\mathcal{D}) \approx \sigma\!\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} d_k(x)^T \Sigma d_k(x)}} \right),
+\]
+and the confidence $\sigma(|z_k(x)|)$ is a \textbf{decreasing function} of $\sigma_0^2$ with the limits:
+\[
+\lim_{\sigma_0^2 \to 0} \sigma\bigl(|z_k(x)|\bigr) = \sigma\bigl(|\tilde{f}_{\mu,k}(x)|\bigr),
+\]
+\[
+\lim_{\sigma_0^2 \to \infty} \sigma\bigl(|z_k(x)|\bigr) \leq \sigma\!\left( \frac{|\tilde{f}_{\mu,k}(x)|}{\sqrt{1+\frac{\pi}{8} \lambda_{\max}(H) \|d_k(x)\|^2}} \right).
+\]
+\end{prop}
+
+\begin{proof}
+Since the prior is 
+\[
+p(\theta) = \mathcal{N}(0, \sigma_0^2 I),
+\]
+its Hessian is $\frac{1}{\sigma_0^2} I$. Thus, the Hessian of the negative log-posterior is
+\[
+\frac{1}{\sigma_0^2} I + H,
+\]
+and consequently, the Laplace posterior covariance is
+\[
+\Sigma = \left(\frac{1}{\sigma_0^2} I + H \right)^{-1}.
+\]
+For any eigenvalue $\lambda_i(H)$, the corresponding eigenvalue of $\Sigma$ is given by:
+\[
+\lambda_i(\Sigma) = \frac{\sigma_0^2}{1 + \sigma_0^2 \lambda_i(H)}.
+\]
+Since $\lambda_i(\Sigma)$ is increasing in $\sigma_0^2$, it follows that 
+\[
+d_k(x)^T \Sigma d_k(x)
+\]
+is also increasing in $\sigma_0^2$.
+
+Now, define
+\[
+z_k(x) := \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} d_k(x)^T \Sigma d_k(x)}}.
+\]
+Since the denominator is an increasing function of $\sigma_0^2$, it follows that $|z_k(x)|$ is a decreasing function of $\sigma_0^2$, which implies that $\sigma(|z_k(x)|)$ is also a decreasing function of $\sigma_0^2$.
+
+For the limits:
+\begin{itemize}
+    \item As $\sigma_0^2 \to 0$, we have $\Sigma \to 0$, so that $d_k(x)^T \Sigma d_k(x) \to 0$. Hence, 
+    \[
+    z_k(x) \to \tilde{f}_{\mu,k}(x),
+    \]
+    and
+    \[
+    \sigma(|z_k(x)|) \to \sigma\bigl(|\tilde{f}_{\mu,k}(x)|\bigr).
+    \]
+    
+    \item As $\sigma_0^2 \to \infty$, we have 
+    \[
+    d_k(x)^T \Sigma d_k(x) \leq \lambda_{\max}(\Sigma) \|d_k(x)\|^2.
+    \]
+    Using the limit $\lambda_{\max}(\Sigma) \to 1/\lambda_{\max}(H)$, we obtain:
+    \[
+    d_k(x)^T \Sigma d_k(x) \leq \frac{\|d_k(x)\|^2}{\lambda_{\max}(H)}.
+    \]
+    Thus, 
+    \[
+    |z_k(x)| \leq \frac{|\tilde{f}_{\mu,k}(x)|}{\sqrt{1+\frac{\pi}{8} \lambda_{\max}(H) \|d_k(x)\|^2}}.
+    \]
+    Applying the sigmoid, we obtain
+    \[
+    \lim_{\sigma_0^2 \to \infty} \sigma(|z_k(x)|) \leq \sigma\!\left( \frac{|\tilde{f}_{\mu,k}(x)|}{\sqrt{1+\frac{\pi}{8} \lambda_{\max}(H) \|d_k(x)\|^2}} \right).
+    \]
+\end{itemize}
+This completes the proof.
+\end{proof}
+
+\end{document}
+
+
