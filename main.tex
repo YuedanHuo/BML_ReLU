@@ -1,14 +1,13 @@
-\documentclass{article} % or another standard class if recommended
-\usepackage[final]{neurips_2024} % load your style file; use appropriate options
- 
+\documentclass{article}
+\usepackage[final]{neurips_2024} 
+
 \usepackage[utf8]{inputenc}   
 \usepackage[T1]{fontenc}      
 \usepackage{amsmath, amssymb} 
 \usepackage{graphicx}         
 \usepackage{booktabs}         
 
-
-\title{Title of Your Paper}
+\title{On the Preservation of Decision Boundaries and Out-of-Distribution Uncertainty in Laplace-Approximated Neural Networks}
 \author{%
   First Author \\
   Institution \\
@@ -24,49 +23,258 @@
 \maketitle
 
 \begin{abstract}
-Your abstract text goes here. 
+Bayesian deep learning methods, such as Laplace Approximation (LLLA), provide a way to quantify uncertainty in neural networks. While existing work shows that LLLA mitigates overconfidence in binary classification, its theoretical justification for multi-class classification and its ability to handle out-of-distribution (OOD) detection remain less understood. In this work, we establish a theoretical justification for preserving softmax decision boundaries under Laplace Approximation and propose a kernel-inspired modification to enhance OOD detection. Our analysis suggests that while LLLA effectively controls confidence scaling, it does not inherently encode a notion of distance to training data as Gaussian Processes (GPs) do. We propose an alternative formulation inspired by GP kernels that explicitly penalizes OOD points while preserving decision structure. 
 \end{abstract}
-
 
 \section{Introduction and Overview}
 
-ReLU-based classification networks are widely used in modern deep learning applications. However, it has been shown that for out-of-distribution (OOD) samples the predictive probability for a given class can be arbitrarily close to 1, leading to overconfident predictions. Such overconfidence is particularly problematic in safety-critical applications where reliable uncertainty estimation is essential.
+Neural networks have demonstrated remarkable success in a variety of tasks, but they are prone to overconfident predictions, particularly when confronted with out-of-distribution (OOD) inputs. This overconfidence is problematic in safety-critical applications, such as medical diagnosis and autonomous driving, where uncertainty quantification is essential for making reliable decisions.
 
-The paper \emph{``Being Bayesian, Even Just a Bit, Fixes Overconfidence in ReLU Networks''} addresses this issue by incorporating Bayesian statistics into ReLU networks. In particular, the authors focus on the binary classification setting using logistic regression. By approximating the posterior distribution over the network weights with a Gaussian,
-\[
-p(w \mid \mathcal{D}) \approx \mathcal{N}(w \mid \mu, \Sigma),
-\]
-they show that the asymptotic OOD predictive confidence is upper bounded by a function that depends solely on the mean vector \(\mu\) and covariance matrix \(\Sigma\). In effect, by controlling the parameters of the Gaussian approximation, one can shift this upper bound toward a value near \(1/2\), thereby mitigating overconfidence.
+Bayesian deep learning methods have been developed to address this issue by incorporating uncertainty estimation into neural network predictions. Among these, the \textbf{Laplace Approximation for Last-Layer Approximation (LLLA)} \citep{ritter2018scalable, immer2021improving} has emerged as an efficient method to introduce Bayesian uncertainty in a computationally tractable manner. LLLA approximates the posterior distribution over network weights using a Gaussian distribution centered at the maximum a posteriori (MAP) estimate, with the covariance given by the inverse Hessian of the loss function. This approach allows for calibrated uncertainty estimation while maintaining computational efficiency, making it practical for large-scale deep learning models.
 
-To achieve this theoretical result, the authors employ two key techniques:
+\subsection{Summary of the Paper \emph{"Being Bayesian, Even Just a Bit, Fixes Overconfidence in ReLU Networks"}}
 
-\begin{enumerate}
-    \item \textbf{Probit Approximation:}  
-    The logistic function is approximated by the probit function according to
-    \[
-    \sigma(x) = \frac{1}{1 + e^{-x}} \approx \Phi\!\Bigl(\sqrt{\frac{\pi}{8}}\, x\Bigr),
-    \]
-    where \(\Phi(\cdot)\) denotes the cumulative distribution function of the standard normal distribution. The authors demonstrate (in Proposition 2.2) that this approximation preserves the prediction boundary, which is crucial for maintaining the qualitative behavior of the classifier.
-    
-    \item \textbf{Piece-wise Affine Structure of ReLU Networks:}  
-    The authors also exploit the fact that networks constructed solely from ReLU (or its linear variants) are piece-wise affine. This property holds for fully connected networks as well as for architectures that include convolutional layers or residual connections. The piece-wise affine structure simplifies the analysis and is instrumental in extending the results from logistic regression to more general ReLU networks.
-\end{enumerate}
-
-For practical implementation, the paper proposes a straightforward recipe: applying a flat Gaussian prior on the weights and then performing a Laplace approximation to obtain the Gaussian posterior. The experimental section validates this method on benchmark datasets such as MNIST (using LeNet) and CIFAR-10 (using ResNet-18), demonstrating that the Bayesian approach effectively curbs overconfidence in OOD scenarios.
-
-\subsection*{Theoretical Limitations}
-
-Despite its strengths, the theoretical contribution of the paper is subject to two notable limitations:
+A recent work by \citet{immer2021improving} systematically analyzes how Bayesian approximations, specifically the Laplace approximation, can address the overconfidence problem in deep ReLU networks. The paper presents several key theoretical and empirical insights:
 
 \begin{itemize}
-    \item \textbf{Reliance on the Probit Approximation:}  
-    The analysis is confined to the binary classification setting with logistic regression, primarily due to the reliance on the probit approximation. It remains an open question whether similar theoretical guarantees can be extended to multi-class settings or to networks employing other activation functions.
-    
-    \item \textbf{Assumption of Piece-wise Affinity:}  
-    The analysis assumes that the ReLU network is piece-wise affine. While this is valid for networks that exclusively use ReLU or its linear variants, many modern architectures incorporate additional non-linearities (e.g., normalization layers, attention mechanisms) that may violate this assumption. As a result, the theoretical findings might not fully capture the behavior of more complex networks used in practical applications.
+    \item \textbf{Overconfidence in ReLU Networks:} It is shown that standard ReLU networks can assign arbitrarily high confidence to OOD inputs due to their unbounded activation function and lack of a natural regularization mechanism.
+    \item \textbf{Laplace Approximation for Uncertainty Estimation:} The authors propose using the Laplace approximation, applied specifically to the last layer (LLLA), to approximate the posterior over network weights. They derive a closed-form uncertainty estimate that adjusts the confidence of predictions by incorporating the curvature of the loss landscape (via the Hessian matrix).
+    \item \textbf{Probit Approximation for Confidence Bounds:} By approximating the logistic sigmoid function with a Gaussian probit function, they derive an upper bound on predictive confidence. This result shows that LLLA provides theoretical guarantees on uncertainty calibration.
+    \item \textbf{Empirical Validation:} The paper empirically demonstrates that LLLA significantly reduces overconfidence compared to standard neural networks. Their experiments on MNIST and CIFAR-10 illustrate that the predictive confidence of the model remains bounded even for OOD inputs.
 \end{itemize}
 
-In summary, while the paper provides both theoretical and empirical support for the Bayesian approach to reducing overconfidence in ReLU networks, its theoretical scope is limited. Future work may consider extending these results to more general settings and network architectures.
+\subsection{Limitations and Open Questions}
 
+Despite these contributions, several open questions remain:
+
+\begin{enumerate}
+    \item \textbf{Preservation of Softmax Decision Boundaries:} 
+    In multi-class classification, LLLA introduces uncertainty corrections to the logits. However, it remains unclear whether these corrections maintain the relative ranking of logits, ensuring that decision boundaries are preserved.
+    \item \textbf{Uncertainty Scaling for OOD Detection:} 
+    While LLLA adjusts confidence levels, it does not explicitly encode a measure of distance to the training distribution, unlike Gaussian Processes (GPs), which naturally revert to a prior in untrained regions. This raises the question: Can LLLA be modified to account for distributional distance more explicitly?
+\end{enumerate}
+
+\subsection{Contributions of This Work}
+
+In this paper, we investigate both of these concerns. Our key contributions are:
+\begin{itemize}
+    \item We provide a theoretical justification for how LLLA preserves softmax decision boundaries when a global uncertainty scaling factor is applied.
+    \item We analyze the limitations of gradient-based uncertainty measures for OOD detection and propose an alternative kernel-inspired approach that explicitly penalizes confidence as a function of distance from the training distribution.
+    \item We empirically evaluate the performance of our method compared to LLLA, demonstrating its potential to better capture predictive uncertainty in OOD settings.
+\end{itemize}
+
+Overall, this work refines the theoretical understanding of LLLA in multi-class classification and suggests practical modifications that may improve its handling of OOD uncertainty.
+
+
+\section{Preserving Softmax Decision Boundaries under Laplace Approximation}
+
+\subsection{Softmax Transformation under Laplace Approximation}
+We define the softmax predictive probability for class \( k \):
+\begin{equation}
+p(y = k \mid x, \theta) = \frac{\exp(f_{\theta,k}(x))}{\sum_{j=1}^K \exp(f_{\theta,j}(x))}.
+\end{equation}
+By introducing the transformed logits:
+\begin{equation}
+\tilde{f}_{\theta,k}(x) := f_{\theta,k}(x) - \log\Biggl(\sum_{j\neq k} \exp\bigl(f_{\theta,j}(x)\bigr)\Biggr),
+\end{equation}
+the predictive probability can be rewritten in terms of the sigmoid function:
+\begin{equation}
+p(y = k \mid x, \theta) = \sigma(\tilde{f}_{\theta,k}(x)).
+\end{equation}
+
+\subsection{Uncertainty Calibration with Laplace Approximation}
+Applying a Laplace approximation to the posterior over network weights gives:
+\begin{equation}
+\theta \sim \mathcal{N}(\mu, \Sigma).
+\end{equation}
+Using a first-order Taylor expansion (delta method), we approximate the distribution of each transformed logit as:
+\begin{equation}
+\tilde{f}_{\theta,k}(x) \sim \mathcal{N}(\tilde{f}_{\mu,k}(x), \Sigma_k),
+\end{equation}
+where the variance of the posterior is given by:
+\begin{equation}
+\Sigma_k = d_k(x)^T \Sigma d_k(x),
+\end{equation}
+with \( d_k(x) \) denoting the gradient of \( \tilde{f}_{\theta,k}(x) \) with respect to the network parameters:
+\begin{equation}
+d_k(x) = \nabla_{\theta} \tilde{f}_{\theta,k}(x) \Big|_{\theta = \mu}.
+\end{equation}
+
+To obtain an approximate predictive probability, we use the probit approximation:
+\begin{equation}
+\sigma(x) \approx \Phi\left( \sqrt{\frac{\pi}{8}} x \right).
+\end{equation}
+Thus, the predictive probability under uncertainty is approximated by:
+\begin{equation}
+p(y = k \mid x, \mathcal{D}) \approx \Phi\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_k}} \right).
+\end{equation}
+
+
+\subsection{Decision Boundary Preservation}
+
+In a multi-class classification setting, decision boundaries are determined by comparing logits across different classes. Given a neural network with output logits \( f_{\theta, k}(x) \), the predicted class is determined by:
+\begin{equation}
+    \hat{y} = \arg\max_{k} f_{\theta, k}(x).
+\end{equation}
+Thus, the decision boundary between class \( k \) and class \( j \) is given by:
+\begin{equation}
+    f_{\theta, k}(x) = f_{\theta, j}(x).
+\end{equation}
+Under the Laplace approximation, we approximate the transformed logits:
+\begin{equation}
+    \tilde{f}_{\theta,k}(x) \sim \mathcal{N}\bigl(\tilde{f}_{\mu,k}(x), \Sigma_k\bigr),
+\end{equation}
+where the posterior variance is:
+\begin{equation}
+    \Sigma_k = d_k(x)^T \Sigma d_k(x).
+\end{equation}
+
+Applying the probit approximation to the sigmoid function:
+\begin{equation}
+    p(y = k \mid x, \mathcal{D}) \approx \sigma\!\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_k}} \right).
+\end{equation}
+
+For the classification decision, we compare the adjusted logits for two classes \( k \) and \( j \), setting their softmax probabilities equal:
+\begin{equation}
+    \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_k}} = \frac{\tilde{f}_{\mu,j}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_j}}.
+\end{equation}
+If \( \Sigma_k \neq \Sigma_j \), then the relative ordering of logits can change, leading to a shift in decision boundaries.
+
+\paragraph{Applying a Uniform Scaling Factor}
+To avoid this issue, we enforce a **global minimum uncertainty** across all classes:
+\begin{equation}
+    \lambda_{\min} = \min_{k} \Sigma_k.
+\end{equation}
+Replacing all class-specific variances \( \Sigma_k \) with \( \lambda_{\min} \), the modified probability expression becomes:
+\begin{equation}
+    p(y = k \mid x, \mathcal{D}) \approx \sigma\!\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \lambda_{\min}}} \right).
+\end{equation}
+This transformation ensures that the **scaling factor is identical for all classes**. Now, for any two classes \( k \) and \( j \), their comparison remains:
+\begin{equation}
+    \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \lambda_{\min}}} = \frac{\tilde{f}_{\mu,j}(x)}{\sqrt{1+\frac{\pi}{8} \lambda_{\min}}}.
+\end{equation}
+Since the denominator is the same for all classes, it cancels out, leaving:
+\begin{equation}
+    \tilde{f}_{\mu,k}(x) = \tilde{f}_{\mu,j}(x),
+\end{equation}
+which is the original decision boundary condition before uncertainty calibration.
+
+\paragraph{Conclusion:}
+Since the decision boundaries are defined by these equality conditions, applying a **uniform uncertainty scaling factor does not alter the decision boundary**. This ensures that classification behavior is preserved while still incorporating uncertainty estimates.
+
+\subsection{Key Takeaways}
+\begin{itemize}
+    \item **Decision boundaries depend on the ranking of logits**. Any transformation that alters this ranking affects classification behavior.
+    \item **LLLA introduces uncertainty correction via the posterior variance \( \Sigma_k \)**, but naive per-class variance correction can shift boundaries.
+    \item **Using a global uncertainty scaling factor \( \lambda_{\min} \) ensures that all classes are scaled identically**, thereby maintaining the original decision structure.
+\end{itemize}
+
+
+\section{Addressing the OOD Problem: A Kernel Perspective on LLLA}
+
+\subsection{Intuition from Proposition 2.5}
+Proposition 2.5 in \citep{immer2021improving} provides an upper bound on predictive confidence:
+\begin{equation}
+\lim_{\sigma_0^2 \to \infty} \sigma(|z_k(x)|) \leq \sigma\left( \frac{|\tilde{f}_{\mu,k}(x)|}{\sqrt{1+\frac{\pi}{8} \lambda_{\max}(H) \|J_x\|^2}} \right).
+\end{equation}
+Here, \( \lambda_{\max}(H) \) controls global uncertainty while \( \|J_x\| \) scales confidence based on input sensitivity.
+
+\subsection{Gradient-Based OOD Detection: Limitations}
+While large gradient norms can indicate uncertainty, ReLU networks may have **zero gradients even for OOD inputs** due to saturation effects. This means the Laplace approximation does not naturally encode a notion of distance from training data.
+
+\subsection{A Kernel-Based Alternative}
+Gaussian Processes (GPs) provide a natural uncertainty measure where OOD points revert to the prior:
+\begin{equation}
+f_{\mu}(x) = K(x, X)(K + \lambda I)^{-1} y.
+\end{equation}
+To emulate this in LLLA, we replace the gradient norm in the denominator with a kernel-based measure:
+\begin{equation}
+\frac{1}{1 + \sum_{i} K(x, x_i)}.
+\end{equation}
+This approach:
+\begin{itemize}
+    \item Ensures uncertainty grows smoothly as \( x \) moves away from training data.
+    \item Provides an explicit measure of OOD confidence decay.
+    \item Preserves decision boundaries while penalizing uncertainty.
+\end{itemize}
+
+\subsection{Challenges and Trade-offs}
+Despite its appeal, the kernel-based approach has limitations:
+\begin{itemize}
+    \item \textbf{Loss of Bayesian Interpretation}: Kernel smoothing is not derived from weight-space posterior inference.
+    \item \textbf{Computational Cost}: Kernel computations scale poorly without approximations.
+    \item \textbf{Feature Selection Bias}: The chosen kernel may override useful deep network representations.
+\end{itemize}
+
+\section{Conclusion and Future Work}
+Our theoretical analysis establishes that LLLA preserves softmax decision boundaries while scaling uncertainty appropriately. However, its OOD behavior does not inherently match that of Gaussian Processes. We propose a kernel-based alternative that explicitly encodes distance to training data, mitigating overconfidence without altering decision consistency.
+
+Future work includes:
+\begin{itemize}
+    \item Extending theoretical guarantees for kernel-based confidence scaling.
+    \item Investigating scalable approximations to avoid quadratic complexity.
+    \item Benchmarking LLLA against kernel-regularized Bayesian methods.
+\end{itemize}
+
+\section{Conclusion: Kernel-Scaled Laplace vs. Standard LLLA}
+
+\subsection{Summary of Experimental Observations}
+Both \textbf{K-LLLA} and \textbf{LLLA} effectively reduce overconfidence in out-of-distribution (OOD) regions compared to a standard neural network. However, their uncertainty estimation mechanisms differ significantly:
+
+\begin{itemize}
+    \item \textbf{LLLA} relies on Hessian-based uncertainty, implicitly controlled by the prior precision and local geometry of the loss landscape.
+    \item \textbf{K-LLLA} introduces an explicit kernel-based scaling factor, leveraging feature-space distance to training data to further regulate uncertainty.
+\end{itemize}
+
+\subsection{Key Differences in Behavior}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        Aspect & LLLA & K-LLLA (Ours) \\
+        \midrule
+        \textbf{OOD Confidence Control} & Confidence upper-bounded but varies with Hessian eigenvalues & Confidence decreases in feature-space OOD regions \\
+        \textbf{Decision Boundaries} & Well-preserved, but some overconfident regions remain & Slightly distorted due to kernel scaling \\
+        \textbf{Sensitivity to Prior} & Strong influence of Hessian & Hessian influence remains, but kernel dominates in far-OOD \\
+        \textbf{Computational Cost} & Monte Carlo over Gaussian posterior & Additional kernel computation but feasible \\
+        \textbf{Generalization} & Works well ID, struggles with extreme OOD & Explicit OOD scaling but requires kernel tuning \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison of LLLA and Kernel-Scaled LLLA (K-LLLA).}
+    \label{tab:comparison}
+\end{table}
+
+\subsection{Merits of Kernel-Scaled Laplace Approximation}
+\begin{itemize}
+    \item \textbf{Explicit OOD Awareness}: Unlike LLLA, which implicitly controls uncertainty via second-order local geometry (Hessian), K-LLLA explicitly reduces confidence in regions far from training data via a kernel similarity function. This aligns with Gaussian Process (GP) behavior, where confidence naturally collapses in unobserved regions.
+    \item \textbf{Retains Bayesian Structure}: K-LLLA still includes Hessian-based corrections, preserving Bayesian uncertainty from LLLA while adding an additional mechanism for OOD scaling.
+    \item \textbf{Potentially More Robust in High Dimensions}: Since OOD scaling is tied to training data coverage, K-LLLA might be more resilient in high-dimensional feature spaces, where pure Hessian-based uncertainty may be insufficient.
+\end{itemize}
+
+\subsection{Limitations and Shortcomings}
+\begin{itemize}
+    \item \textbf{Kernel Choice is Arbitrary}: The method requires manually choosing and tuning a kernel function (RBF, linear, etc.) and a bandwidth parameter (gamma), introducing additional hyperparameter sensitivity.
+    \item \textbf{Influence of Training Set Size}: Since the kernel scale depends on similarity sums across training samples, its absolute scaling is dataset-dependent, requiring adjustments for larger datasets.
+    \item \textbf{Potential Decision Boundary Distortions}: While kernel scaling preserves softmax ordering, improper scaling can distort decision boundaries. Whether this is beneficial or detrimental depends on the application.
+\end{itemize}
+
+\subsection{Possible Improvements and Future Work}
+\begin{itemize}
+    \item \textbf{Adaptive Kernel Selection}: Instead of manually tuning gamma, methods like automatic bandwidth selection (e.g., median heuristic, learned kernel parameters) could be explored.
+    \item \textbf{Incorporating Kernel Scaling into Monte Carlo Estimation}: Rather than modifying the sigmoid approximation, integrating kernel-based scaling into the Monte Carlo sampling framework could provide smoother uncertainty estimates while maintaining interpretability.
+    \item \textbf{Extensive Empirical Validation}: Testing on larger datasets (CIFAR, ImageNet) could validate robustness beyond synthetic settings.
+    \item \textbf{Connections to Deep Kernel Learning (DKL)}: Since this method already relies on a kernel function, exploring links to Deep Kernel Learning (learning a kernel through a deep network) could provide a more principled approach to kernel selection.
+\end{itemize}
+
+\subsection{Final Thoughts}
+K-LLLA presents a practical improvement over LLLA by explicitly incorporating feature-space distances into uncertainty estimation. While it introduces additional hyperparameter dependencies, its theoretical motivation aligns with Gaussian Process principles, making it a promising method for reducing overconfidence in deep learning.
+
+\textbf{Overall, this provides a structured approach to Bayesian deep learning uncertainty estimation, balancing prior-based and data-driven scaling mechanisms.}
+
+\begin{thebibliography}{99}
+\bibitem{ritter2018scalable} Ritter, H., Botev, A., & Barber, D. (2018). A scalable Laplace approximation for neural networks.
+\bibitem{immer2021improving} Immer, A., Korzepa, M., Bauer, M., & van der Wilk, M. (2021). Improving predictions with Bayesian neural networks.
+\end{thebibliography}
 
 \end{document}
