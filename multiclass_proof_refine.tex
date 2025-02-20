@@ -1,0 +1,125 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{amsfonts, algorithm, algpseudocode}
+\newtheorem{prop}{Proposition}
+\newtheorem*{remark}{Remark}
+
+\begin{document}
+\section{Preserving Softmax Decision Boundaries under Laplace Approximation}
+
+\subsection{Softmax Transformation under Laplace Approximation}
+We define the softmax predictive probability for class \( k \):
+\begin{equation}
+p(y = k \mid x, \theta) = \frac{\exp(f_{\theta, k}(x))}{\sum_{j=1}^K \exp(f_{\theta, j}(x))}.
+\end{equation}
+By introducing the transformed logits:
+\begin{equation}
+\tilde{f}_{\theta, k}(x) := f_{\theta, k}(x) - \log\Biggl(\sum_{j\neq k} \exp\bigl(f_{\theta, j}(x)\bigr)\Biggr),
+\end{equation}
+the predictive probability can be rewritten in terms of the sigmoid function:
+\begin{equation}
+p(y = k \mid x, \theta) = \sigma(\tilde{f}_{\theta,k}(x)).
+\end{equation}
+
+We can then perform the probit approximation of sigmoid, and we get
+\begin{equation}
+    p(y = k \mid x) \approx \Phi(\frac{\tilde{f}_{\mu, k}(x)}{\sqrt{1+\frac{\pi}{8}d_k^{T}\Sigma d_{k}}}),
+\end{equation}
+where $\mu$ is the posterior mean, $\Sigma$ is the posterior covariance matrix, and \( d_k(x) \) denoting the gradient of \( \tilde{f}_{\theta,k}(x) \) with respect to the network parameters:
+\begin{equation}
+d_k(x) = \nabla_{\theta} \tilde{f}_{\theta,k}(x) \Big|_{\theta = \mu}.
+\end{equation}
+
+
+
+\subsection{Decision Boundary Preservation}
+
+In a multi-class classification setting, decision boundaries are determined by comparing logits across different classes. Given a neural network with output logits \( f_{\theta, k}(x) \), the predicted class is determined by:
+\begin{equation}
+    \hat{y} = \arg\max_{k} f_{\theta, k}(x).
+\end{equation}
+Thus, the decision boundary between class \( k \) and class \( j \) is given by:
+\begin{equation}
+    f_{\theta, k}(x) = f_{\theta, j}(x).
+\end{equation}
+Under the Laplace approximation, we approximate the transformed logits:
+\begin{equation}
+    \tilde{f}_{\theta,k}(x) \sim \mathcal{N}\bigl(\tilde{f}_{\mu,k}(x), \Sigma_k\bigr),
+\end{equation}
+where the posterior variance is:
+\begin{equation}
+    \Sigma_k = d_k(x)^T \Sigma d_k(x).
+\end{equation}
+
+Applying the probit approximation to the sigmoid function:
+\begin{equation}
+    p(y = k \mid x, \mathcal{D}) \approx \sigma\!\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_k}} \right).
+\end{equation}
+
+For the classification decision, we compare the adjusted logits for two classes \( k \) and \( j \), setting their softmax probabilities equal:
+\begin{equation}
+    \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_k}} = \frac{\tilde{f}_{\mu,j}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_j}}.
+\end{equation}
+If \( \Sigma_k \neq \Sigma_j \), then the relative ordering of logits can change, leading to a shift in decision boundaries.
+
+To avoid this issue, we enforce a global minimum uncertainty across all classes:
+\begin{equation}
+    \lambda_{\min} = \min_{k} \Sigma_k.
+\end{equation}
+Replacing all class-specific variances \( \Sigma_k \) with \( \lambda_{\min} \), the modified probability expression becomes:
+\begin{equation}
+    p(y = k \mid x, \mathcal{D}) \approx \sigma\!\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \lambda_{\min}}} \right).
+\end{equation}
+This transformation ensures that the **scaling factor is identical for all classes**. Now, for any two classes \( k \) and \( j \), their comparison remains:
+\begin{equation}
+    \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \lambda_{\min}}} = \frac{\tilde{f}_{\mu,j}(x)}{\sqrt{1+\frac{\pi}{8} \lambda_{\min}}}.
+\end{equation}
+Since the denominator is the same for all classes, it cancels out, leaving:
+\begin{equation}
+    \tilde{f}_{\mu,k}(x) = \tilde{f}_{\mu,j}(x),
+\end{equation}
+which is the original decision boundary condition before uncertainty calibration.
+
+\paragraph{Conclusion:}
+Since the decision boundaries are defined by these equality conditions, applying a uniform uncertainty scaling factor does not alter the decision boundary. This ensures that classification behavior is preserved while still incorporating uncertainty estimates.
+
+
+\subsection{Bounding the Asymptotic Confidence}
+
+The posterior variance associated with the transformed logit \( \tilde{f}_k(x) \) is given by:
+\begin{equation}
+    \Sigma_k = d_k(x)^T \Sigma d_k(x).
+\end{equation}
+
+We now examine the asymptotic behavior of the predictive confidence:
+\begin{equation}
+    p(y = k \mid x) \approx \sigma\left( \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8} \Sigma_k}} \right).
+\end{equation}
+
+By linearity of ReLU, we can rewrite the numerator as:
+\begin{equation}
+    \tilde{f}_{\mu,k}(x) = \mathbf{u}_k^{T} x - \log \sum_{j \neq k} \exp(\mathbf{u}_j^{T} x).
+\end{equation}
+By rewriting the denominator, we obtain:
+\begin{equation}
+    \sqrt{1+\frac{\pi}{8} \Sigma_k} = \sqrt{1+\frac{\pi}{8} \big( J_{\text{eff}}^{T} x \big)^T \Sigma \big( J_{\text{eff}}^{T} x \big)},
+\end{equation}
+where \( J_{\text{eff}} \) is a **weighted sum of the Jacobians** across all classes.
+
+In particular, $J_{\text{eff}} =  J_k + \sum_{j \neq k }w_j J_j$,
+where $J_k = \frac{\partial \mathbf{u}_j}{\partial \theta}\big|_{\mu}$ for all k = 1,...,K; $$w_j = \frac{\exp(f_{\mu,j}(x))}{\sum_{l \neq k}\exp(f_{\mu,l}(x))}$$ for all $j \neq k$.
+
+Since the softmax weights \( w_j \) are bounded between 0 and 1 for all \( x \), the matrix \( J_{\text{eff}} \) remains bounded. Thus, the leading-order dependence on \( x \) cancels out in the ratio:
+\begin{equation}
+    \frac{\mathbf{u}_k^{T} x}{\sqrt{\frac{\pi}{8} (J_{\text{eff}}^{T} x)^T \Sigma (J_{\text{eff}}^{T} x)}}.
+\end{equation}
+Since both terms grow at the same rate, the expression remains bounded as \( x \to \infty \), ensuring that:
+\begin{equation}
+    \lim_{\|x\| \to \infty} p(y = k \mid x, \mathcal{D}) < 1.
+\end{equation}
+
+This justify such approximation of softmax can mitigate overconfidence of OOD samples, even though the softmax add non-linearity to the formulation.
+
+
+\end{document}
