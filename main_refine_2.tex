@@ -1,0 +1,248 @@
+\documentclass{article}
+\usepackage[final]{neurips_2024} 
+
+\usepackage[utf8]{inputenc}   
+\usepackage[T1]{fontenc}      
+\usepackage{amsmath, amssymb} 
+\usepackage{graphicx}         
+\usepackage{booktabs}    
+\usepackage{amsthm} % Theorem environments
+\newtheorem{proposition}{Proposition}
+
+\title{On the Preservation of Decision Boundaries and Out-of-Distribution Uncertainty in Laplace-Approximated Neural Networks}
+\author{%
+  First Author \\
+  Institution \\
+  \texttt{first.author@example.com}
+  \and
+  Second Author \\
+  Institution \\
+  \texttt{second.author@example.com}
+}
+
+\begin{document}
+\maketitle
+
+\section{Introduction and Overview}
+
+Neural networks have demonstrated remarkable success in a wide range of tasks, yet they are prone to producing overconfident predictions, particularly when faced with out-of-distribution (OOD) inputs. This overconfidence is problematic in safety-critical applications, such as medical diagnosis and autonomous driving, where uncertainty quantification is crucial for making reliable decisions.
+
+Bayesian deep learning methods have been proposed as a solution to this issue, incorporating uncertainty estimation into neural network predictions. Among these approaches, the \textbf{Laplace Approximation for Last-Layer Approximation (LLLA)} \cite{main_paper} has emerged as an efficient and scalable method for introducing Bayesian uncertainty. LLLA approximates the posterior distribution over network weights with a Gaussian distribution centered at the maximum a posteriori (MAP) estimate, with the covariance given by the inverse Hessian of the loss function. This approach allows for calibrated uncertainty estimation while maintaining computational efficiency, making it particularly suitable for large-scale deep learning models.
+
+\subsection{Summary of the Paper \emph{"Being Bayesian, Even Just a Bit, Fixes Overconfidence in ReLU Networks"}}
+
+\cite{main_paper} systematically investigates how Bayesian approximations, specifically the Laplace approximation, can mitigate the overconfidence problem in deep ReLU networks. The paper presents several key theoretical and empirical contributions:
+
+\begin{itemize}
+    \item \textbf{Laplace Approximation for Uncertainty Estimation:} 
+    The authors propose applying the Laplace approximation specifically to the last layer of a neural network (LLLA) to approximate the posterior over network weights. This provides a principled and computationally efficient method for uncertainty estimation.
+    
+    \item \textbf{Probit Approximation for Confidence Bounds:} 
+    By approximating the logistic sigmoid function with a Gaussian probit function, they derive an upper bound on predictive confidence. This theoretical result establishes that LLLA can effectively control overconfidence in binary classification settings.
+
+    \item \textbf{Empirical Validation:} 
+    The authors conduct extensive experiments on benchmark datasets such as MNIST and CIFAR-10. Their results demonstrate that LLLA significantly reduces overconfidence compared to standard neural networks, ensuring that predictive confidence remains bounded even for OOD inputs.
+\end{itemize}
+
+\subsection{Limitations and Open Questions}
+
+Despite these contributions, several open questions remain regarding the theoretical properties and practical implications of LLLA:
+
+\begin{enumerate}
+    \item \textbf{Preservation of Softmax Decision Boundaries:} 
+    While the authors empirically validate LLLA for multi-class classification using Monte Carlo sampling, they do not provide a theoretical analysis akin to the binary classification case. It remains unclear whether the confidence bound derived for binary classification extends to the multi-class setting, and whether LLLA preserves softmax decision boundaries.
+
+    \item \textbf{Uncertainty Scaling for OOD Detection:} 
+    Although LLLA effectively adjusts confidence levels, it does not explicitly encode a measure of distance to the training distribution, unlike Gaussian Processes (GPs), which naturally revert to a prior in untrained regions. This raises an important question: Can LLLA be modified to incorporate an explicit distance-aware uncertainty measure, similar to the kernel-based structure of GPs?
+\end{enumerate}
+
+\subsection{Contributions of This Work}
+
+In this paper, we aim to address these open questions by:
+\begin{itemize}
+    \item Analyzing the decision boundary properties of LLLA in the multi-class setting and showing that the Monte Carlo-based predictive probability approximation does not necessarily preserve decision boundaries.
+    \item Investigating alternative uncertainty scaling mechanisms inspired by Gaussian Processes, incorporating kernel-based distance measures into LLLA to better capture distributional uncertainty.
+    \item Evaluating our proposed modifications through empirical experiments, comparing standard LLLA with kernel-enhanced LLLA to assess their performance in terms of confidence calibration and OOD detection.
+\end{itemize}
+
+Overall, this work refines the theoretical understanding of LLLA in multi-class classification and suggests practical modifications that may improve its handling of OOD uncertainty.
+
+
+\section{Extension of Theoretical Results to Multiclass}
+While \cite{main_paper} provides strong theoretical results proving the effectiveness of LLLA in reducing overconfidence in out-of-distribution (OOD) regions, these results have not been extended to the multi-class classification setting.
+
+This limitation arises because the integral for the softmax function
+\begin{equation}
+\label{softmax_integration}
+    p(y=k | x, \mathcal{D}) = \int \text{softmax}(f_{\theta, k}(x)) 
+    \mathcal{N}(f_{\theta, k}(x) | f_{\mu, k}(x), \Sigma_k) df_{\theta, k}(x)
+\end{equation}
+has no simple closed-form solution or standard approximation. As a result, the authors of \cite{main_paper} resort to Monte Carlo approximation when applying LLLA to the multi-class setting.
+
+In this work, we instead apply a probit approximation to the softmax function and justify the ability of LLLA to regularize overconfidence through the following result.
+
+\begin{proposition}
+Let \( f_{\theta,k}(x) \) be the output of a ReLU network with weights \( \theta \) and input \( x \), and let \( f_{\mu,k}(x) \) be the mean function under the Laplace approximation at \( \theta = \mu \). Assume that the posterior covariance \( \Sigma_k \) is given by the Hessian approximation of the log-posterior. Then, for sufficiently large input magnitude \( \delta \), the predictive probability satisfies
+\begin{equation}
+    \lim_{\delta\to \infty} \lvert z_k(\delta x)\rvert \leq 
+    \sigma \left(\frac{\lVert\mathbf{u}_k\rVert}{s_{\min}(\tilde{J})\sqrt{\frac{\pi}{8}\lambda_{\min}(\Sigma)}}\right),
+\end{equation}
+where \( s_{\min}(\tilde{J}) := \min_{l} s_{\min}(J_{l}) \) and \( J_{\text{eff}} = J_k + \sum_{j \neq k} w_j J_j \) is the effective Jacobian.
+\end{proposition}
+
+\begin{proof}
+We outline the key ideas of the proof below.
+
+First, note that for all \( k \in [K] \), the softmax function can be rewritten as:
+\begin{equation}
+    \text{softmax}(f_{\theta,k}(x)) = \sigma(\tilde{f}_{\theta,k}(x)),
+\end{equation}
+where
+\begin{equation}
+    \tilde{f}_{\theta,k}(x) = f_{\theta,k}(x) + \log \sum_{j\neq k} \exp(f_{\theta, j}(x)).
+\end{equation}
+Applying the probit approximation for the sigmoid function, \( \sigma(a) \approx \Phi(\frac{\pi}{8}a) \), we obtain an approximation for 
+\begin{equation}
+    \label{zk_definition}
+    z_k(x) := \frac{f_{\mu,k}(x)}{\sqrt{1+\frac{\pi}{8}d_k^{\intercal}\Sigma d_k}}
+\end{equation}
+
+\begin{equation}
+    \label{softmax_approx}
+    p (y = k | x, \mathcal{D}) \approx \sigma\left(z_k(x)\right),
+\end{equation}
+
+where \( d_k = \nabla_{\theta} \tilde{f}_{\theta,k}(x)|_{\mu} \).
+
+To show that \( x \) cancels out in the numerator and denominator, we again consider the piecewise linearity of ReLU. For all \( k \in [K] \), we can write:
+\begin{equation}
+    f_{\theta,k}(x) = \mathbf{u}_{k}^{\intercal}x + b_{k}.
+\end{equation}
+Thus, the gradient \( d_k \) at \( \delta x \) for any \( \delta \) can be written as
+\begin{align*}
+    d_{k}(\delta x) =
+    &\delta (J_{k}^{\intercal}x + \frac{1}{\delta}\nabla_{\theta} b_{k}|_{\mu}) 
+    + \sum_{j\neq k}\delta w_{j}(J_{j}^{\intercal}x + \frac{1}{\delta}\nabla_{\theta}b_{j}|_{\mu})\\
+    & := \delta J_{\text{eff}}^{\intercal}x + \nabla_{\theta} b_{\text{eff}}|_{\mu}.
+\end{align*}
+where
+\begin{align*}
+    & J_l = \frac{\partial \mathbf{u}_{l}}{\partial \theta}|_{\mu}, \quad \forall l \in [K],\\
+    & w_j = \frac{\exp(f_{\mu,j}(x))}{\sum_{l\neq k}\exp(f_{\mu, l}(x))}, \quad \forall j \neq k, \\
+    & J_{\text{eff}} = J_{k} + \sum_{j \neq k}w_j J_j, \\
+    & b_{\text{eff}} = b_{k} + \sum_{j \neq k}w_j b_{j}.
+\end{align*}
+By a similar argument as in \cite{main_paper}, we obtain
+\begin{equation*}
+    \lim_{\delta\to \infty} \lvert z(\delta x)\rvert \leq \frac{\lVert\mathbf{u}_k\rVert \lVert x\rVert}
+    {\sqrt{\frac{\pi}{8}\lambda_{\min}(\Sigma) \lVert J_{\text{eff}}^{\intercal}x}\rVert^{2}}.
+\end{equation*}
+Noting that \( s_{\min}(\tilde{J}) := \min_{l} s_{\min}(J_{l}) \leq s_{\min}(J_{\text{eff}}) \), we therefore conclude
+\begin{equation*}
+    \lim_{\delta\to \infty} \lvert z(\delta x)\rvert \leq 
+    \sigma \left(\frac{\lVert\mathbf{u}_k\rVert}{s_{\min}(\tilde{J})\sqrt{\frac{\pi}{8}\lambda_{\min}(\Sigma)}}\right).
+\end{equation*}
+\end{proof}
+
+
+\section{Softmax-Based Predictive Probability and Decision Boundary Preservation}
+
+\subsection{Full-Laplace Does Not Preserve Decision Boundaries}
+
+We claim that Full Laplace Approximation does not preserve decision boundaries in multi-class classification due to class-dependent uncertainty.
+
+To see why, consider the second-order Taylor expansion of the softmax function:
+
+\begin{equation}
+    \mathbb{E} \left[ \operatorname{softmax}_k(f_{\theta}(x)) \right] \approx \frac{e^{f_{\mu,k}(x) + \frac{1}{2} \sigma_k^2(x)}}{\sum_{j=1}^{K} e^{f_{\mu,j}(x) + \frac{1}{2} \sigma_j^2(x)}},
+\end{equation}
+where the marginal variance of the logit \( f_{\theta,k}(x) \) is given by
+
+\begin{equation}
+    \sigma_k^2(x) = d_k(x)^T \Sigma d_k(x),
+\end{equation}
+with \( d_k(x) = \nabla_{\theta} f_{\theta,k}(x) \) being the Jacobian of the logit with respect to all network parameters, and \( \Sigma \) being the Laplace-approximated posterior covariance.
+
+A decision boundary between classes \( k \) and \( j \) is classically defined as
+
+\begin{equation}
+    f_{\mu,k}(x) = f_{\mu,j}(x).
+\end{equation}
+
+Under the uncertainty-aware softmax approximation, since \( \sigma_k^2(x) \) varies across classes, the decision boundary is now implicitly determined by
+
+\begin{equation}
+    f_{\mu,k}(x) + \frac{1}{2} \sigma_k^2(x) = f_{\mu,j}(x) + \frac{1}{2} \sigma_j^2(x).
+\end{equation}
+
+This equation implies that the decision boundary shifts whenever \( \sigma_k^2(x) \neq \sigma_j^2(x) \). In Full Laplace, this occurs because the uncertainty term \( \sigma_k^2(x) \) depends on \( d_k(x) \), which is the gradient of the logit with respect to the entire set of network parameters. 
+
+In a deep network with multiple layers, the logit function for class \( k \) depends on parameters from all layers,
+
+\begin{equation}
+    f_k(x) = f_k(W_L, W_{L-1}, \dots, W_1, x).
+\end{equation}
+
+Taking the gradient with respect to all parameters, we obtain
+
+\begin{equation}
+    d_k(x) = \left[ \frac{\partial f_k}{\partial W_L}, \frac{\partial f_k}{\partial W_{L-1}}, \dots, \frac{\partial f_k}{\partial W_1} \right].
+\end{equation}
+
+Since different classes \( k \) and \( j \) are associated with different weight paths through the network, their gradients are not identical, meaning
+
+\begin{equation}
+    d_k(x) \neq d_j(x).
+\end{equation}
+
+As a result, the uncertainty estimates \( \sigma_k^2(x) \) vary across classes, causing shifts in the decision boundary.
+
+This effect is also evident in the sigmoid-based approximation. Specifically, the adjusted logit for class \( k \) is given by
+
+\begin{equation}
+    z_k(x) = \frac{\tilde{f}_{\mu,k}(x)}{\sqrt{1 + \frac{\pi}{8} \sigma_k^2(x)}},
+\end{equation}
+which introduces class-dependent scaling of the logits. Since the denominator differs across classes, the relative ordering of logits is altered, further confirming that Full Laplace does not preserve decision boundaries.
+
+\subsection{Last-Layer Laplace Approximation Preserves Decision Boundaries}
+
+In contrast to Full Laplace, Last-Layer Laplace Approximation (LLLA) preserves decision boundaries because the uncertainty term is the same for all classes. The final layer of a neural network follows a linear structure,
+
+\begin{equation}
+    f_k(x) = u_k^T \phi(x),
+\end{equation}
+where \( u_k \) is the last-layer weight vector for class \( k \) and \( \phi(x) \) is the feature embedding. Since LLLA only approximates uncertainty over the last-layer weights, the gradient with respect to the last-layer parameters is given by
+
+\begin{equation}
+    d_k(x) = \nabla_{\theta} f_k(x) = \phi(x).
+\end{equation}
+
+As the feature embedding \( \phi(x) \) is the same across all classes, it follows that
+
+\begin{equation}
+    \sigma_k^2(x) = \phi(x)^T \Sigma \phi(x),
+\end{equation}
+which is identical for all classes. 
+
+Since \( \sigma_k^2(x) = \sigma_j^2(x) \) for all \( k, j \), the decision boundary remains
+
+\begin{equation}
+    f_{\mu,k}(x) = f_{\mu,j}(x).
+\end{equation}
+
+This result demonstrates that LLLA preserves decision boundaries. Unlike Full Laplace, where different classes have different uncertainty contributions from earlier layers, LLLA enforces a shared uncertainty structure across all logits, ensuring that the decision boundary remains unchanged.
+
+
+
+
+
+
+\begin{thebibliography}{9}
+\bibitem{main_paper}
+A. Kristiadi, M. Hein, and P. Hennig.
+\newblock Being Bayesian, even just a bit, fixes overconfidence in ReLU networks.
+\newblock arXiv preprint arXiv:2002.10118, 2020.
+\newblock URL: \url{https://arxiv.org/abs/2002.10118}.
+\end{thebibliography}
+
+\end{document}
